@@ -32,7 +32,12 @@ func main() {
 	// output target environment details
 	log.Println("version:", Version)
 	log.Println("source:", Source)
-	log.Println("auth:", authPath)
+	if authPath != "" {
+		log.Println("auth:", authPath)
+	} else {
+		log.Println("auth: <gcloud auth>")
+	}
+
 	log.Println("project:", projectID)
 
 	configErrors := validateConfig(projectID, authPath, key, newValue)
