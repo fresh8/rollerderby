@@ -21,13 +21,13 @@ func main() {
 
 	var key string
 	var newValue string
+	var projectID string
+	var authPath = os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
+	flag.StringVar(&projectID, "project", os.Getenv("GOOGLE_PROJECT_ID"), "Google project ID, can be set with this flag or GOOGLE_PROJECT_ID environment variable")
 	flag.StringVar(&key, "key", "", "metadata key to update")
 	flag.StringVar(&newValue, "value", "", "metadata value to set")
 	flag.Parse()
-
-	projectID := os.Getenv("GOOGLE_PROJECT_ID")
-	authPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
 	// output target environment details
 	log.Println("version:", Version)
