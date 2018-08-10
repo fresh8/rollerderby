@@ -10,7 +10,7 @@ for the target revision of software.
     * GOOGLE_APPLICATION_CREDENTIALS="gcp.json" in CI.
     * GOOGLE_PROJECT_ID="your-project"
 
-## Execution
+## Execution
 
 ```
 rollerderby -key=${METADATA_KEY} -value="${NEW_VALUE}"
