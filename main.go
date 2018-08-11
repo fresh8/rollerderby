@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -45,38 +46,61 @@ func main() {
 		log.Fatalf("%s\n", configErrors)
 	}
 
-	ctx := context.Background()
+	computeService := computeClient()
 
-	client, err := google.DefaultClient(ctx, compute.ComputeScope)
-	if err != nil {
-		log.Fatal(err)
-	}
+	projectService := compute.NewProjectsService(computeService)
 
-	service, err := compute.New(client)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	// TODO (NF 2018-08-10): Retry loop when a fingerprint doesn't match (aka a concurrent write).
 	// retrieve current values
-	projectService := compute.NewProjectsService(service)
-	project, err := projectService.Get(projectID).Do()
-	if err != nil {
-		log.Fatal(err)
-	}
+	project := getProject(projectService, projectID)
 
-	filename := fmt.Sprintf("%v-%d.json", projectID, time.Now().Unix())
+	filename := fmt.Sprintf("%v-%d.json", project.Name, time.Now().Unix())
 	w, err := os.Create(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	enc := json.NewEncoder(w)
-	err = enc.Encode(&project.CommonInstanceMetadata)
+	writeMeta(w, project.CommonInstanceMetadata)
+	log.Println("wrote current metadata to", filename)
+
+	updateCommonKey(project, key, newValue, projectService)
+
+	// replace existing servers in service group 1 at a time
+
+	// poll until done
+}
+
+func computeClient() *compute.Service {
+	ctx := context.Background()
+	client, err := google.DefaultClient(ctx, compute.ComputeScope)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("wrote current metadata to", filename)
+	service, err := compute.New(client)
+	if err != nil {
+		log.Fatal(err)
+	}
 
+	return service
+}
+
+func getProject(projectService *compute.ProjectsService, projectID string) *compute.Project {
+	project, err := projectService.Get(projectID).Do()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return project
+}
+
+func writeMeta(w io.WriteCloser, meta *compute.Metadata) {
+	enc := json.NewEncoder(w)
+	err := enc.Encode(meta)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func updateCommonKey(project *compute.Project, key string, newValue string, projectService *compute.ProjectsService) {
 	keyIndex := -1
 	log.Println("fingerprint:", project.CommonInstanceMetadata.Fingerprint)
 	for i, meta := range project.CommonInstanceMetadata.Items {
@@ -88,28 +112,23 @@ func main() {
 
 	// update new values in metadata
 	if keyIndex == -1 {
+		keyIndex = len(project.CommonInstanceMetadata.Items)
 		newItem := compute.MetadataItems{
-			Key:   key,
-			Value: &newValue,
+			Key: key,
 		}
 		project.CommonInstanceMetadata.Items = append(project.CommonInstanceMetadata.Items, &newItem)
 		log.Printf("%s: <EMPTY> -> %s\n", key, newValue)
-	} else {
-		project.CommonInstanceMetadata.Items[keyIndex].Value = &newValue
 	}
 
-	op, err := projectService.SetCommonInstanceMetadata(projectID, project.CommonInstanceMetadata).Do()
+	project.CommonInstanceMetadata.Items[keyIndex].Value = &newValue
+
+	op, err := projectService.SetCommonInstanceMetadata(project.Name, project.CommonInstanceMetadata).Do()
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	if op.Error != nil {
 		log.Fatalf("%+v\n", op.Error.Errors)
 	}
-
-	// replace existing servers in service group 1 at a time
-
-	// poll until done
 }
 
 func validateConfig(projectID, authPath, key, value string) Errors {
@@ -117,13 +136,7 @@ func validateConfig(projectID, authPath, key, value string) Errors {
 	if projectID == "" {
 		errors = append(errors, fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank"))
 	}
-
-	/*
-	if authPath == "" {
-		errors = append(errors, fmt.Errorf("GOOGLE_APPLICATION_CREDENTIALS cannot be blank"))
-	}
-	*/
-
+	
 	if key == "" {
 		errors = append(errors, fmt.Errorf("-key cannot be blank"))
 	}
