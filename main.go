@@ -136,7 +136,7 @@ func validateConfig(projectID, authPath, key, value string) Errors {
 	if projectID == "" {
 		errors = append(errors, fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank"))
 	}
-	
+
 	if key == "" {
 		errors = append(errors, fmt.Errorf("-key cannot be blank"))
 	}

@@ -5,3 +5,10 @@ GIT_ORIGIN := $(shell git remote get-url --push origin)
 .PHONY: all
 all:
 	go build -v -ldflags "-X main.Version=${GIT_HASH} -X main.Source=${GIT_ORIGIN} -extldflags"
+
+.PHONY: install
+install: $(GOPATH)/bin/rollerderby
+
+$(GOPATH)/bin/rollerderby:
+	go install -v -ldflags "-X main.Version=${GIT_HASH} -X main.Source=${GIT_ORIGIN} -extldflags"
+
