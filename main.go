@@ -24,10 +24,12 @@ func main() {
 	var newValue string
 	var projectID string
 	var authPath = os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+	var listMeta bool
 
 	flag.StringVar(&projectID, "project", os.Getenv("GOOGLE_PROJECT_ID"), "Google project ID, can be set with this flag or GOOGLE_PROJECT_ID environment variable")
 	flag.StringVar(&key, "key", "", "metadata key to update")
 	flag.StringVar(&newValue, "value", "", "metadata value to set")
+	flag.BoolVar(&listMeta, "list", false, "list project common meta key values")
 	flag.Parse()
 
 	// output target environment details
@@ -41,32 +43,47 @@ func main() {
 
 	log.Println("project:", projectID)
 
-	configErrors := validateConfig(projectID, authPath, key, newValue)
-	if configErrors != nil {
-		log.Fatalf("%s\n", configErrors)
+	if listMeta {
+		listKeys(projectID)
+		return
+	}
+
+	updateKey(projectID, key, newValue)
+}
+
+func listKeys(projectID string) {
+	if projectID == "" {
+		log.Fatal(fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank"))
 	}
 
 	computeService := computeClient()
-
 	projectService := compute.NewProjectsService(computeService)
 
+	project := getProject(projectService, projectID)
+	for _, meta := range project.CommonInstanceMetadata.Items {
+		log.Printf("%s: %s\n", meta.Key, *meta.Value)
+	}
+}
+
+func updateKey(projectID string, key string, newValue string) {
+	configErrors := validateUpdateParms(projectID, key, newValue)
+	if configErrors != nil {
+		log.Fatalf("%s\n", configErrors)
+	}
+	computeService := computeClient()
+	projectService := compute.NewProjectsService(computeService)
 	// TODO (NF 2018-08-10): Retry loop when a fingerprint doesn't match (aka a concurrent write).
 	// retrieve current values
 	project := getProject(projectService, projectID)
-
 	filename := fmt.Sprintf("%v-%d.json", project.Name, time.Now().Unix())
 	w, err := os.Create(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	writeMeta(w, project.CommonInstanceMetadata)
 	log.Println("wrote current metadata to", filename)
-
 	updateCommonKey(project, key, newValue, projectService)
-
 	// replace existing servers in service group 1 at a time
-
 	// poll until done
 }
 
@@ -131,7 +148,7 @@ func updateCommonKey(project *compute.Project, key string, newValue string, proj
 	}
 }
 
-func validateConfig(projectID, authPath, key, value string) Errors {
+func validateUpdateParms(projectID, key, value string) Errors {
 	var errors Errors
 	if projectID == "" {
 		errors = append(errors, fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank"))
@@ -141,7 +158,7 @@ func validateConfig(projectID, authPath, key, value string) Errors {
 		errors = append(errors, fmt.Errorf("-key cannot be blank"))
 	}
 
-	if key == "" {
+	if value == "" {
 		errors = append(errors, fmt.Errorf("-value cannot be blank"))
 	}
 
