@@ -42,15 +42,7 @@ func main() {
 	}
 
 	// output target environment details
-	log.Println("version:", Version)
-	log.Println("source:", Source)
-	if authPath != "" {
-		log.Println("auth:", authPath)
-	} else {
-		log.Println("auth: <gcloud auth>")
-	}
-
-	log.Println("project:", projectID)
+	printConfig(authPath, projectID)
 
 	if otherProjectID != "" {
 		compareProjects(projectID, otherProjectID)
@@ -61,6 +53,17 @@ func main() {
 	}
 
 	updateKey(projectID, key, newValue)
+}
+
+func printConfig(authPath, projectID string) {
+	log.Println("version:", Version)
+	log.Println("source:", Source)
+	if authPath != "" {
+		log.Println("auth:", authPath)
+	} else {
+		log.Println("auth: <gcloud auth>")
+	}
+	log.Println("project:", projectID)
 }
 
 type CompareMeta struct {
@@ -113,8 +116,10 @@ func listKeys(projectID string) {
 
 	project := getProject(projectService, projectID)
 	sort.Sort(ItemsByKey(project.CommonInstanceMetadata.Items))
+	log.Printf("%-45.45s | %-30.30s\n", "key", projectID)
+	log.Printf("%s\n", strings.Repeat("=", 45 + 30 + 1*3))
 	for _, meta := range project.CommonInstanceMetadata.Items {
-		log.Printf("%s = %.40s\n", meta.Key, *meta.Value)
+		log.Printf("%-45.45s | %-30.30s\n", meta.Key, *meta.Value)
 	}
 }
 
