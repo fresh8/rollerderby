@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -18,19 +19,27 @@ var Version string
 var Source string
 
 func main() {
-	log.SetFlags(log.LUTC | log.Lshortfile | log.LstdFlags)
+	log.SetOutput(os.Stdout)
 
 	var key string
 	var newValue string
 	var projectID string
+	var otherProjectID string
 	var authPath = os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 	var listMeta bool
 
 	flag.StringVar(&projectID, "project", os.Getenv("GOOGLE_PROJECT_ID"), "Google project ID, can be set with this flag or GOOGLE_PROJECT_ID environment variable")
 	flag.StringVar(&key, "key", "", "metadata key to update")
 	flag.StringVar(&newValue, "value", "", "metadata value to set")
+	flag.StringVar(&otherProjectID, "compare", "", "compare this projects meta to the default projects")
 	flag.BoolVar(&listMeta, "list", false, "list project common meta key values")
 	flag.Parse()
+
+	if listMeta || otherProjectID != "" {
+		log.SetFlags(0)
+	} else {
+		log.SetFlags(log.LUTC | log.Lshortfile | log.LstdFlags)
+	}
 
 	// output target environment details
 	log.Println("version:", Version)
@@ -43,12 +52,55 @@ func main() {
 
 	log.Println("project:", projectID)
 
-	if listMeta {
+	if otherProjectID != "" {
+		compareProjects(projectID, otherProjectID)
+		return
+	} else if listMeta {
 		listKeys(projectID)
 		return
 	}
 
 	updateKey(projectID, key, newValue)
+}
+
+type CompareMeta struct {
+	A string
+	B string
+}
+
+func compareProjects(projectA, projectB string) {
+	if projectA == "" {
+		log.Fatal(fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank"))
+	}
+
+	computeService := computeClient()
+	projectService := compute.NewProjectsService(computeService)
+
+	aInfo := getProject(projectService, projectA)
+	bInfo := getProject(projectService, projectB)
+	keys := make(map[string]CompareMeta)
+	for _, item := range aInfo.CommonInstanceMetadata.Items {
+		// TODO should probably check for dups here rather than assume anything.
+		keys[item.Key] = CompareMeta{
+			A: *item.Value,
+		}
+	}
+
+	for _, item := range bInfo.CommonInstanceMetadata.Items {
+		v, ok := keys[item.Key]
+		if !ok {
+			v = CompareMeta{}
+		}
+
+		v.B = *item.Value
+		keys[item.Key] = v
+	}
+
+	log.Printf("%-45.45s | %-5.5s | %-25.25s | %-25.25s\n", "key", "equal", projectA, projectB)
+	log.Printf("%s\n", strings.Repeat("=", 45 + 5 + 2*25 + 3*3))
+	for k := range keys {
+		log.Printf("%-45.45s | %-5.5t | %-25.25s | %-25.25s\n", k, keys[k].A == keys[k].B, keys[k].A, keys[k].B)
+	}
 }
 
 func listKeys(projectID string) {
@@ -60,10 +112,17 @@ func listKeys(projectID string) {
 	projectService := compute.NewProjectsService(computeService)
 
 	project := getProject(projectService, projectID)
+	sort.Sort(ItemsByKey(project.CommonInstanceMetadata.Items))
 	for _, meta := range project.CommonInstanceMetadata.Items {
-		log.Printf("%s: %s\n", meta.Key, *meta.Value)
+		log.Printf("%s = %.40s\n", meta.Key, *meta.Value)
 	}
 }
+
+type ItemsByKey []*compute.MetadataItems
+
+func (m ItemsByKey) Len() int           { return len(m) }
+func (m ItemsByKey) Less(i, j int) bool { return m[i].Key < m[j].Key }
+func (m ItemsByKey) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
 
 func updateKey(projectID string, key string, newValue string) {
 	configErrors := validateUpdateParms(projectID, key, newValue)
