@@ -61,7 +61,10 @@ func main() {
 	updateKey(projectID, key, newValue)
 
 	// TODO (NF 2018-08-15): replace with zone look-up for instance group.
-	replaceInstances(projectID, "europe-west1-d", groupName)
+	if groupName != "" {
+		replaceInstances(projectID, "europe-west1-d", groupName)
+	}
+
 }
 
 func printConfig(authPath, projectID string) {
