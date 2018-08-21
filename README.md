@@ -3,8 +3,7 @@
 Roller derby manages rolling replacements of services that use Instance metadata
 for the target revision of an application.
 
-
-## Authentication
+## Authentication
 
 There are two mechanisms you can use for authentication:
 
@@ -14,16 +13,14 @@ There are two mechanisms you can use for authentication:
 NOTE: for each form of authentication Roller Derby's actions are restricted to
 the roles IAM configuration.
 
-
-### 1. Using User Credentials
+### 1. Using User Credentials
 
 To use user credentials carry out the following steps:
 
  1. Download and install [Google Cloud SDK](https://cloud.google.com/sdk/).
  2. Login to each environment with `google auth login --project $PROJECT_ID`.
 
-
-### 2. Using Account Keys
+ ### 2. Using Account Keys
 
 To use account keys carry out the following steps:
 
