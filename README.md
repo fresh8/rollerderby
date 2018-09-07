@@ -102,6 +102,6 @@ $ rollerderby -project=project-a -target=app-group -key=app_version -value=1.0.1
 2018/08/16 20:12:20 gcp_compute.go:223: wrote current metadata to project-a-1534450340.json
 2018/08/16 20:12:20 gcp_compute.go:261: fingerprint: jy9AERL4jzY=
 2018/08/16 20:12:20 gcp_compute.go:264: app_version: 1.0.0 -> 1.0.1
-2018/08/16 20:12:22 gcp_compute.go:55: replacing group app-group instances [zones/europe-west1-d/instances/app-group-7bv1]
+2018/08/16 20:12:22 gcp_compute.go:55: replacing group app-group
 ```
 
