@@ -6,7 +6,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/connectedventures/rollerderby/compute"
+	"github.com/fresh8/rollerderby/compute"
 )
 
 // Version is the Git SHA for this application specified at compile time.

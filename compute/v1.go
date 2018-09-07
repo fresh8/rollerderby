@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/connectedventures/rollerderby/errors"
+	"github.com/fresh8/rollerderby/errors"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
 )
