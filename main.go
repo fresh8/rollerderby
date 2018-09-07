@@ -4,11 +4,15 @@ import (
 	"flag"
 	"log"
 	"os"
-	"strings"
 	"runtime"
+
+	"github.com/connectedventures/rollerderby/compute"
 )
 
+// Version is the Git SHA for this application specified at compile time.
 var Version string
+
+// Source is the Git origin for this application specified at compile time.
 var Source string
 
 func main() {
@@ -48,23 +52,22 @@ func main() {
 	}
 
 	if otherProjectID != "" {
-		compareProjects(projectID, otherProjectID)
+		compute.CompareProjects(projectID, otherProjectID)
 		return
 	} else if listMeta {
-		listKeys(projectID)
+		compute.ListKeys(projectID)
 		return
 	} else if listGroups {
-		listInstanceGroups(projectID)
+		compute.ListInstanceGroups(projectID)
 		return
 	}
 
-	updateKey(projectID, key, newValue)
+	compute.UpdateKey(projectID, key, newValue)
 
 	// TODO (NF 2018-08-15): replace with zone look-up for instance group.
 	if groupName != "" {
-		replaceInstances(projectID, "europe-west1-d", groupName)
+		compute.RollingReplace(projectID, "europe-west1-d", groupName)
 	}
-
 }
 
 func printConfig(authPath, projectID string) {
@@ -77,14 +80,4 @@ func printConfig(authPath, projectID string) {
 	} else {
 		log.Println("auth: <gcloud auth>")
 	}
-}
-
-type Errors []error
-
-func (errs Errors) String() string {
-	var s []string
-	for _, err := range errs {
-		s = append(s, err.Error())
-	}
-	return strings.Join(s, "; ")
 }
