@@ -47,7 +47,7 @@ func ListInstanceGroups(projectID string) {
 		}
 
 		for _, v := range item.InstanceGroupManagers {
-			log.Println("    ", v.Name, v.InstanceGroup) // instance group
+			log.Println("    ", v.Name) // instance group
 			a := strings.Split(v.Zone, "/")
 
 			instances, err := ListManagedInstances(igms, projectID, a[len(a)-1], v.Name)

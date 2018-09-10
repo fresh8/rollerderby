@@ -11,7 +11,7 @@ import (
 )
 
 // RollingReplace replaces all of the instances rolling style.
-func RollingReplace(projectID, zone, groupName string) {
+func RollingReplace(projectID, zone, groupName string, minReadySec int64) {
 	computeService, err := betaComputeClient()
 	if err != nil {
 		log.Fatalf("%v\n", err)
@@ -31,6 +31,7 @@ func RollingReplace(projectID, zone, groupName string) {
 
 	policy.Versions[0] = nextVer
 	policy.UpdatePolicy.MinimalAction = "REPLACE"
+	policy.UpdatePolicy.MinReadySec = minReadySec
 
 	op, err := igms.Patch(projectID, zone, groupName, policy).Do()
 	if err != nil {
