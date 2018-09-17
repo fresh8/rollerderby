@@ -42,7 +42,7 @@ func RollingReplace(projectID, zone, groupName string, minReadySec int64) error 
 		for _, e := range op.Error.Errors {
 			log.Println(e.Code, e.Message, e.Location)
 		}
-		return fmt.Errorf("got op.Error != nil, want nil")
+		return fmt.Errorf("RollingReplace igms.Patch got op.Error != nil, want nil")
 	}
 
 	log.Printf("replacing group %v", groupName)

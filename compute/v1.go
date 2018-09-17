@@ -26,7 +26,7 @@ type CompareMeta struct {
 // ListInstanceGroups prints all instance groups for the given projectID.
 func ListInstanceGroups(projectID string) error {
 	if projectID == "" {
-		return fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank")
+		return fmt.Errorf("ListInstanceGroups projectID cannot be blank")
 	}
 
 	computeService, err := v1ComputeClient()
@@ -92,11 +92,11 @@ func ListManagedInstances(igms *compute.InstanceGroupManagersService, projectID,
 // CompareProjects prints a comparison table between projectA and projectB.
 func CompareProjects(projectA, projectB string) (map[string]CompareMeta, error) {
 	if projectA == "" {
-		return nil, fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank")
+		return nil, fmt.Errorf("CompareProjects projectA cannot be blank")
 	}
 
 	if projectB == "" {
-		return nil, fmt.Errorf("-compare project cannot be blank")
+		return nil, fmt.Errorf("CompareProjects projectB cannot be blank")
 	}
 
 	computeService, err := v1ComputeClient()
@@ -152,7 +152,7 @@ func PrintKeys(keys map[string]CompareMeta, projectA, projectB string) {
 // ListKeys prints a list of all keys associated with a projectID.
 func ListKeys(projectID string) error {
 	if projectID == "" {
-		return fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank")
+		return fmt.Errorf("ListKeys projectID cannot be blank")
 	}
 
 	computeService, err := v1ComputeClient()
@@ -271,7 +271,7 @@ func updateCommonKey(project *compute.Project, key string, newValue string, proj
 		return err
 	}
 	if op.Error != nil {
-		return fmt.Errorf("%+v", op.Error.Errors)
+		return fmt.Errorf("updateCommonKey %+v", op.Error.Errors)
 	}
 
 	return nil
@@ -280,15 +280,15 @@ func updateCommonKey(project *compute.Project, key string, newValue string, proj
 func validateUpdateParms(projectID, key, value string) errors.Errors {
 	var errors errors.Errors
 	if projectID == "" {
-		errors = append(errors, fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank"))
+		errors = append(errors, fmt.Errorf("validateUpdateParms projectID cannot be blank"))
 	}
 
 	if key == "" {
-		errors = append(errors, fmt.Errorf("-key cannot be blank"))
+		errors = append(errors, fmt.Errorf("validateUpdateParms key cannot be blank"))
 	}
 
 	if value == "" {
-		errors = append(errors, fmt.Errorf("-value cannot be blank"))
+		errors = append(errors, fmt.Errorf("validateUpdateParms value cannot be blank"))
 	}
 
 	return errors
