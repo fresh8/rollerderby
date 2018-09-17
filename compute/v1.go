@@ -141,11 +141,24 @@ func CompareProjects(projectA, projectB string) (map[string]CompareMeta, error) 
 	return keys, nil
 }
 
+func isSame(a, b string) string {
+	if a != b {
+		return "✕"
+	}
+	return "✔"
+}
+
 func PrintKeys(keys map[string]CompareMeta, projectA, projectB string) {
 	log.Printf("%-45.45s | %-5.5s | %-25.25s | %-25.25s\n", "key", "equal", projectA, projectB)
 	log.Printf("%s\n", strings.Repeat("=", 45+5+2*25+3*3))
+	var keyNames []string
 	for k := range keys {
-		log.Printf("%-45.45s | %5t | %-25.25s | %-25.25s\n", k, keys[k].A == keys[k].B, keys[k].A, keys[k].B)
+		keyNames = append(keyNames, k)
+	}
+	sort.Strings(keyNames)
+
+	for _, k := range keyNames {
+		log.Printf("%-45.45s | %3s   | %-25.25s | %-25.25s\n", k, isSame(keys[k].A, keys[k].B), keys[k].A, keys[k].B)
 	}
 }
 

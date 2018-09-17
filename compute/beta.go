@@ -24,6 +24,7 @@ func RollingReplace(projectID, zone, groupName string, minReadySec int64) error 
 		return err
 	}
 
+	// force a rolling replace by bumping the version.
 	nextVer := &compute.InstanceGroupManagerVersion{
 		Name:             fmt.Sprintf("0-%v", time.Now().Unix()),
 		InstanceTemplate: policy.InstanceTemplate,
