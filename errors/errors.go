@@ -5,6 +5,10 @@ import "strings"
 // Errors encapsulates a collection of errors.
 type Errors []error
 
+func (errs Errors) Error() string {
+	return errs.String()
+}
+
 func (errs Errors) String() string {
 	var s []string
 	for _, err := range errs {

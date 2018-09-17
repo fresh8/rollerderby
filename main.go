@@ -17,7 +17,13 @@ var Source string
 
 func main() {
 	log.SetOutput(os.Stdout)
+	err := exec()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
+func exec() error {
 	var key string
 	var newValue string
 	var projectID string
@@ -49,35 +55,41 @@ func main() {
 	}
 
 	// output target environment details
-	printConfig(authPath, projectID)
+	printConfig(authPath, projectID, Version, Source)
 
 	if listVersion {
-		return
+		return nil
 	}
 
 	if otherProjectID != "" {
-		compute.CompareProjects(projectID, otherProjectID)
-		return
+		err := compute.CompareProjects(projectID, otherProjectID)
+		return err
 	} else if listMeta {
-		compute.ListKeys(projectID)
-		return
+		err := compute.ListKeys(projectID)
+		return err
 	} else if listGroups {
-		compute.ListInstanceGroups(projectID)
-		return
+		err := compute.ListInstanceGroups(projectID)
+		return err
 	}
 
-	compute.UpdateKey(projectID, key, newValue)
+	err := compute.UpdateKey(projectID, key, newValue)
+	if err != nil {
+		return err
+	}
 
 	// TODO (NF 2018-08-15): replace with zone look-up for instance group.
 	if groupName != "" {
-		compute.RollingReplace(projectID, zoneName, groupName, minReadySec)
+		err := compute.RollingReplace(projectID, zoneName, groupName, minReadySec)
+		return err
 	}
+
+	return nil
 }
 
-func printConfig(authPath, projectID string) {
+func printConfig(authPath, projectID, version, source string) {
 	log.Println("project:", projectID)
-	log.Println("version:", Version)
-	log.Println("source:", Source)
+	log.Println("version:", version)
+	log.Println("source:", source)
 	log.Println("go:", runtime.Version())
 	if authPath != "" {
 		log.Println("auth:", authPath)

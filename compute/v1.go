@@ -24,21 +24,21 @@ type CompareMeta struct {
 }
 
 // ListInstanceGroups prints all instance groups for the given projectID.
-func ListInstanceGroups(projectID string) {
+func ListInstanceGroups(projectID string) error {
 	if projectID == "" {
-		log.Fatal(fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank"))
+		return fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank")
 	}
 
 	computeService, err := v1ComputeClient()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	igms := compute.NewInstanceGroupManagersService(computeService)
 
 	list, err := aggregatedList(igms, projectID)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	for k, item := range list.Items {
@@ -52,7 +52,7 @@ func ListInstanceGroups(projectID string) {
 
 			instances, err := ListManagedInstances(igms, projectID, a[len(a)-1], v.Name)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 
 			for _, instance := range instances {
@@ -60,6 +60,8 @@ func ListInstanceGroups(projectID string) {
 			}
 		}
 	}
+
+	return nil
 }
 
 func aggregatedList(igms *compute.InstanceGroupManagersService, projectID string) (*compute.InstanceGroupManagerAggregatedList, error) {
@@ -88,26 +90,30 @@ func ListManagedInstances(igms *compute.InstanceGroupManagersService, projectID,
 }
 
 // CompareProjects prints a comparison table between projectA and projectB.
-func CompareProjects(projectA, projectB string) {
+func CompareProjects(projectA, projectB string) error {
 	if projectA == "" {
-		log.Fatal(fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank"))
+		return fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank")
+	}
+
+	if projectB == "" {
+		return fmt.Errorf("-compare project cannot be blank")
 	}
 
 	computeService, err := v1ComputeClient()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	projectService := compute.NewProjectsService(computeService)
 
 	aInfo, err := getProject(projectService, projectA)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	bInfo, err := getProject(projectService, projectB)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	keys := make(map[string]CompareMeta)
@@ -137,31 +143,36 @@ func CompareProjects(projectA, projectB string) {
 	for k := range keys {
 		log.Printf("%-45.45s | %5t | %-25.25s | %-25.25s\n", k, keys[k].A == keys[k].B, keys[k].A, keys[k].B)
 	}
+
+	return nil
 }
 
 // ListKeys prints a list of all keys associated with a projectID.
-func ListKeys(projectID string) {
+func ListKeys(projectID string) error {
 	if projectID == "" {
-		log.Fatal(fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank"))
+		return fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank")
 	}
 
 	computeService, err := v1ComputeClient()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	projectService := compute.NewProjectsService(computeService)
 
 	project, err := getProject(projectService, projectID)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
 	sort.Sort(ItemsByKey(project.CommonInstanceMetadata.Items))
 	log.Printf("%-45.45s | %-30.30s\n", "key", projectID)
 	log.Printf("%s\n", strings.Repeat("=", 45+30+1*3))
 	for _, meta := range project.CommonInstanceMetadata.Items {
 		log.Printf("%-45.45s | %-30.30s\n", meta.Key, *meta.Value)
 	}
+
+	return nil
 }
 
 // ItemsByKey is a sortable interface for metadata items.
@@ -172,15 +183,15 @@ func (m ItemsByKey) Less(i, j int) bool { return m[i].Key < m[j].Key }
 func (m ItemsByKey) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
 
 // UpdateKey updates the projects common metadata key with newValue.
-func UpdateKey(projectID string, key string, newValue string) {
+func UpdateKey(projectID string, key string, newValue string) error {
 	configErrors := validateUpdateParms(projectID, key, newValue)
 	if configErrors != nil {
-		log.Fatalf("%s\n", configErrors)
+		return configErrors
 	}
 
 	computeService, err := v1ComputeClient()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	projectService := compute.NewProjectsService(computeService)
@@ -188,19 +199,27 @@ func UpdateKey(projectID string, key string, newValue string) {
 	// retrieve current values
 	project, err := getProject(projectService, projectID)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	filename := fmt.Sprintf("%v-%d.json", project.Name, time.Now().Unix())
 	w, err := os.Create(filename)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	writeMeta(w, project.CommonInstanceMetadata)
+
+	err = writeMeta(w, project.CommonInstanceMetadata)
+	if err != nil {
+		return err
+	}
+
 	log.Println("wrote current metadata to", filename)
-	updateCommonKey(project, key, newValue, projectService)
-	// replace existing servers in service group 1 at a time
-	// poll until done
+	err = updateCommonKey(project, key, newValue, projectService)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func v1ComputeClient() (*compute.Service, error) {
@@ -209,31 +228,21 @@ func v1ComputeClient() (*compute.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	service, err := compute.New(client)
-	if err != nil {
-		return nil, err
-	}
 
-	return service, nil
+	return compute.New(client)
 }
 
 func getProject(projectService *compute.ProjectsService, projectID string) (*compute.Project, error) {
 	project, err := projectService.Get(projectID).Do()
-	if err != nil {
-		return nil, err
-	}
 	return project, err
 }
 
-func writeMeta(w io.WriteCloser, meta *compute.Metadata) {
+func writeMeta(w io.WriteCloser, meta *compute.Metadata) error {
 	enc := json.NewEncoder(w)
-	err := enc.Encode(meta)
-	if err != nil {
-		log.Fatal(err)
-	}
+	return enc.Encode(meta)
 }
 
-func updateCommonKey(project *compute.Project, key string, newValue string, projectService *compute.ProjectsService) {
+func updateCommonKey(project *compute.Project, key string, newValue string, projectService *compute.ProjectsService) error {
 	keyIndex := -1
 	log.Println("fingerprint:", project.CommonInstanceMetadata.Fingerprint)
 	for i, meta := range project.CommonInstanceMetadata.Items {
@@ -257,11 +266,13 @@ func updateCommonKey(project *compute.Project, key string, newValue string, proj
 
 	op, err := projectService.SetCommonInstanceMetadata(project.Name, project.CommonInstanceMetadata).Do()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	if op.Error != nil {
-		log.Fatalf("%+v\n", op.Error.Errors)
+		return fmt.Errorf("%+v", op.Error.Errors)
 	}
+
+	return nil
 }
 
 func validateUpdateParms(projectID, key, value string) errors.Errors {

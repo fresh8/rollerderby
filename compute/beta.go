@@ -11,17 +11,17 @@ import (
 )
 
 // RollingReplace replaces all of the instances rolling style.
-func RollingReplace(projectID, zone, groupName string, minReadySec int64) {
+func RollingReplace(projectID, zone, groupName string, minReadySec int64) error {
 	computeService, err := betaComputeClient()
 	if err != nil {
-		log.Fatalf("%v\n", err)
+		return err
 	}
 
 	igms := computeService.InstanceGroupManagers
 
 	policy, err := igms.Get(projectID, zone, groupName).Do()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	nextVer := &compute.InstanceGroupManagerVersion{
@@ -35,17 +35,18 @@ func RollingReplace(projectID, zone, groupName string, minReadySec int64) {
 
 	op, err := igms.Patch(projectID, zone, groupName, policy).Do()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if op.Error != nil {
 		for _, e := range op.Error.Errors {
 			log.Println(e.Code, e.Message, e.Location)
 		}
-		log.Fatalf("got op.Error != nil, want nil")
+		return fmt.Errorf("got op.Error != nil, want nil")
 	}
 
 	log.Printf("replacing group %v", groupName)
+	return nil
 }
 
 func betaComputeClient() (*compute.Service, error) {
