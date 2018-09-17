@@ -48,10 +48,10 @@ func exec() error {
 	flag.BoolVar(&listGroups, "groups", false, "list compute instance groups and exit")
 	flag.Parse()
 
+	log.SetFlags(log.LUTC | log.Lshortfile | log.LstdFlags)
+	// for user interactive output remove extended log info
 	if listMeta || otherProjectID != "" || listVersion || listGroups {
 		log.SetFlags(0)
-	} else {
-		log.SetFlags(log.LUTC | log.Lshortfile | log.LstdFlags)
 	}
 
 	// output target environment details
@@ -59,28 +59,28 @@ func exec() error {
 
 	if listVersion {
 		return nil
-	}
+	} else if otherProjectID != "" {
+		keys, err := compute.CompareProjects(projectID, otherProjectID)
+		if err != nil {
+			return err
+		}
+		compute.PrintKeys(keys, projectID, otherProjectID)
 
-	if otherProjectID != "" {
-		err := compute.CompareProjects(projectID, otherProjectID)
-		return err
+		return nil
 	} else if listMeta {
-		err := compute.ListKeys(projectID)
-		return err
+		return compute.ListKeys(projectID)
 	} else if listGroups {
-		err := compute.ListInstanceGroups(projectID)
-		return err
-	}
+		return compute.ListInstanceGroups(projectID)
+	} else if projectID != "" && key != "" && newValue != "" && groupName != "" {
+		err := compute.UpdateKey(projectID, key, newValue)
+		if err != nil {
+			return err
+		}
 
-	err := compute.UpdateKey(projectID, key, newValue)
-	if err != nil {
-		return err
-	}
-
-	// TODO (NF 2018-08-15): replace with zone look-up for instance group.
-	if groupName != "" {
-		err := compute.RollingReplace(projectID, zoneName, groupName, minReadySec)
-		return err
+		// TODO (NF 2018-08-15): replace with zone look-up for instance group.
+		return compute.RollingReplace(projectID, zoneName, groupName, minReadySec)
+	} else if projectID != "" && key != "" && newValue != "" {
+		return compute.UpdateKey(projectID, key, newValue)
 	}
 
 	return nil
@@ -93,7 +93,8 @@ func printConfig(authPath, projectID, version, source string) {
 	log.Println("go:", runtime.Version())
 	if authPath != "" {
 		log.Println("auth:", authPath)
-	} else {
-		log.Println("auth: <gcloud auth>")
+		return
 	}
+
+	log.Println("auth: <gcloud auth>")
 }

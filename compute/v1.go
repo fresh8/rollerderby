@@ -90,30 +90,30 @@ func ListManagedInstances(igms *compute.InstanceGroupManagersService, projectID,
 }
 
 // CompareProjects prints a comparison table between projectA and projectB.
-func CompareProjects(projectA, projectB string) error {
+func CompareProjects(projectA, projectB string) (map[string]CompareMeta, error) {
 	if projectA == "" {
-		return fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank")
+		return nil, fmt.Errorf("GOOGLE_PROJECT_ID cannot be blank")
 	}
 
 	if projectB == "" {
-		return fmt.Errorf("-compare project cannot be blank")
+		return nil, fmt.Errorf("-compare project cannot be blank")
 	}
 
 	computeService, err := v1ComputeClient()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	projectService := compute.NewProjectsService(computeService)
 
 	aInfo, err := getProject(projectService, projectA)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	bInfo, err := getProject(projectService, projectB)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	keys := make(map[string]CompareMeta)
@@ -138,13 +138,15 @@ func CompareProjects(projectA, projectB string) error {
 		keys[item.Key] = v
 	}
 
+	return keys, nil
+}
+
+func PrintKeys(keys map[string]CompareMeta, projectA, projectB string) {
 	log.Printf("%-45.45s | %-5.5s | %-25.25s | %-25.25s\n", "key", "equal", projectA, projectB)
 	log.Printf("%s\n", strings.Repeat("=", 45+5+2*25+3*3))
 	for k := range keys {
 		log.Printf("%-45.45s | %5t | %-25.25s | %-25.25s\n", k, keys[k].A == keys[k].B, keys[k].A, keys[k].B)
 	}
-
-	return nil
 }
 
 // ListKeys prints a list of all keys associated with a projectID.
