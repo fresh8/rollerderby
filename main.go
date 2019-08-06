@@ -41,12 +41,16 @@ func exec() error {
 	flag.StringVar(&newValue, "value", "", "metadata value to set")
 	flag.StringVar(&otherProjectID, "compare", "", "compare this projects meta to the default projects")
 	flag.StringVar(&groupName, "target", "", "target instance group to replace")
-	flag.StringVar(&zoneName, "zone", "europe-west1-d", "target instance group to replace")
+	flag.StringVar(&zoneName, "zone", os.Getenv("GOOGLE_ZONE"), "target instance group to replace")
 	flag.Int64Var(&minReadySec, "ready", 90, "minimum number of seconds to wait before assuming the service is ready")
 	flag.BoolVar(&listMeta, "meta", false, "list projects common metadata key values")
 	flag.BoolVar(&listVersion, "version", false, "output version and exit")
 	flag.BoolVar(&listGroups, "groups", false, "list compute instance groups and exit")
 	flag.Parse()
+
+	if zoneName == "" {
+		zoneName = "europe-west1-d"
+	}
 
 	log.SetFlags(log.LUTC | log.Lshortfile | log.LstdFlags)
 	// for user interactive output remove extended log info
